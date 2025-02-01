@@ -1,0 +1,242 @@
+import java.sql.*;
+import java.time.LocalDate;
+
+public class Main {
+    static final String DB_URL = "jdbc:postgresql://localhost:5432/OnlineShoppingSystem_db";
+    static final String USER = "postgres";
+    static final String PASS = "1234"; // Replace with your PostgreSQL password
+
+    public static void main(String[] args) {
+        try (Connection conn = DriverManager.getConnection(DB_URL, USER, PASS)) {
+            if (conn != null) {
+                System.out.println("Connection to the database established!");
+
+                // Pre-populate tables
+                populateCustomers(conn);
+                populateItems(conn);
+                populateOrders(conn);
+
+                // Viewing data
+                viewItems(conn);
+                viewCustomers(conn);
+                viewOrders(conn);
+
+                // Updating data
+                updateItemPrice(conn, 1, 1300.00);
+                // Deleting data
+                deleteCustomer(conn, 2);
+
+                // Viewing data after deleting
+                viewItems(conn);
+                viewCustomers(conn);
+                viewOrders(conn);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // ------------------- Methods for Populating Tables -------------------
+    public static void populateCustomers(Connection conn) throws SQLException {
+        String sql = "INSERT INTO customers (name, email) VALUES (?, ?)";
+        String checkSql = "SELECT COUNT(*) FROM customers WHERE email = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql);
+             PreparedStatement checkStmt = conn.prepareStatement(checkSql)) {
+            String[][] customers = {
+                    {"John Doe", "john.doe@example.com"},
+                    {"Jane Smith", "jane.smith@example.com"},
+                    {"Alice Brown", "alice.brown@example.com"},
+                    {"Bob White", "bob.white@example.com"},
+                    {"Charlie Green", "charlie.green@example.com"},
+                    {"Diana Black", "diana.black@example.com"},
+                    {"Eva Grey", "eva.grey@example.com"}
+            };
+            for (String[] customer : customers) {
+                checkStmt.setString(1, customer[1]);
+                ResultSet rs = checkStmt.executeQuery();
+                rs.next();
+                int count = rs.getInt(1);
+
+                if (count == 0) { // If the email does not exist, insert the customer
+                    pstmt.setString(1, customer[0]);
+                    pstmt.setString(2, customer[1]);
+                    pstmt.executeUpdate();
+                }
+                else{
+                    System.out.println("Customer with email "+ customer[1]+" already exists");
+                }
+            }
+            System.out.println("Customers added!");
+        }
+    }
+
+    public static void populateItems(Connection conn) throws SQLException {
+        String sql = "INSERT INTO items (name, price, stock_quantity) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            String[][] items = {
+                    {"Laptop", "1200.00", "50"},
+                    {"Keyboard", "75.00", "100"},
+                    {"Monitor", "300.00", "75"},
+                    {"Mouse", "25.00", "150"},
+                    {"Tablet", "250.00", "60"},
+                    {"Headphones", "50.00", "120"}
+            };
+            for (String[] item : items) {
+                pstmt.setString(1, item[0]);
+                pstmt.setDouble(2, Double.parseDouble(item[1]));
+                pstmt.setInt(3, Integer.parseInt(item[2]));
+                pstmt.executeUpdate();
+            }
+            System.out.println("Items added!");
+        }
+    }
+
+    public static void populateOrders(Connection conn) throws SQLException {
+        String sql = "INSERT INTO orders (customer_id, order_date, total_amount) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            String[][] orders = {
+                    {"1", "2024-01-10", "1275.00"},
+                    {"2", "2024-02-15", "325.00"},
+                    {"1", "2024-03-20", "275.00"},
+                    {"3", "2024-04-01", "50.00"},
+                    {"4", "2024-05-05", "275.00"},
+                    {"2", "2024-05-10", "25.00"}
+            };
+            for (String[] order : orders) {
+                pstmt.setInt(1, Integer.parseInt(order[0]));
+                pstmt.setDate(2, Date.valueOf(order[1]));
+                pstmt.setDouble(3, Double.parseDouble(order[2]));
+                pstmt.executeUpdate();
+            }
+            System.out.println("Orders added!");
+        }
+    }
+
+
+    // ------------------- Methods for Item -------------------
+    public static void addItem(Connection conn, String name, double price, int stockQuantity) throws SQLException {
+        String sql = "INSERT INTO items (name, price, stock_quantity) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setDouble(2, price);
+            pstmt.setInt(3, stockQuantity);
+            pstmt.executeUpdate();
+            System.out.println("Item added: " + name);
+        }
+    }
+
+    public static void viewItems(Connection conn) throws SQLException {
+        String sql = "SELECT * FROM items";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("\nList of items:");
+            while (rs.next()) {
+                System.out.printf("ID: %d, Name: %s, Price: %.2f, Stock: %d%n",
+                        rs.getInt("item_id"), rs.getString("name"), rs.getDouble("price"), rs.getInt("stock_quantity"));
+            }
+        }
+    }
+
+    public static void updateItemPrice(Connection conn, int itemId, double newPrice) throws SQLException {
+        String sql = "UPDATE items SET price = ? WHERE item_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, newPrice);
+            pstmt.setInt(2, itemId);
+            pstmt.executeUpdate();
+            System.out.println("Price of item " + itemId + " updated to " + newPrice);
+        }
+    }
+
+    public static void deleteItem(Connection conn, int itemId) throws SQLException {
+        String sql = "DELETE FROM items WHERE item_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, itemId);
+            pstmt.executeUpdate();
+            System.out.println("Item with id " + itemId + " deleted successfully");
+        }
+    }
+
+    // ------------------- Methods for Customer -------------------
+    public static void addCustomer(Connection conn, String name, String email) throws SQLException {
+        String sql = "INSERT INTO customers (name, email) VALUES (?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, name);
+            pstmt.setString(2, email);
+            pstmt.executeUpdate();
+            System.out.println("Customer added: " + name);
+        }
+    }
+
+    public static void viewCustomers(Connection conn) throws SQLException {
+        String sql = "SELECT * FROM customers";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("\nList of customers:");
+            while (rs.next()) {
+                System.out.printf("ID: %d, Name: %s, Email: %s%n",
+                        rs.getInt("customer_id"), rs.getString("name"), rs.getString("email"));
+            }
+        }
+    }
+    public static void updateCustomerEmail(Connection conn, int customerId, String newEmail) throws SQLException {
+        String sql = "UPDATE customers SET email = ? WHERE customer_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, newEmail);
+            pstmt.setInt(2, customerId);
+            pstmt.executeUpdate();
+            System.out.println("Email of customer " + customerId + " updated to " + newEmail);
+        }
+    }
+
+    public static void deleteCustomer(Connection conn, int customerId) throws SQLException {
+        String sql = "DELETE FROM customers WHERE customer_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, customerId);
+            pstmt.executeUpdate();
+            System.out.println("Customer with id " + customerId + " deleted successfully");
+        }
+    }
+
+    // ------------------- Methods for Order -------------------
+    public static void addOrder(Connection conn, int customerId, LocalDate orderDate, double totalAmount) throws SQLException {
+        String sql = "INSERT INTO orders (customer_id, order_date, total_amount) VALUES (?, ?, ?)";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, customerId);
+            pstmt.setDate(2, Date.valueOf(orderDate));
+            pstmt.setDouble(3, totalAmount);
+            pstmt.executeUpdate();
+            System.out.println("Order added for customer: " + customerId);
+        }
+    }
+
+    public static void viewOrders(Connection conn) throws SQLException {
+        String sql = "SELECT * FROM orders";
+        try (Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+            System.out.println("\nList of orders:");
+            while (rs.next()) {
+                System.out.printf("ID: %d, Customer ID: %d, Date: %s, Total: %.2f%n",
+                        rs.getInt("order_id"), rs.getInt("customer_id"), rs.getDate("order_date"), rs.getDouble("total_amount"));
+            }
+        }
+    }
+
+    public static void updateOrderTotal(Connection conn, int orderId, double newTotal) throws SQLException {
+        String sql = "UPDATE orders SET total_amount = ? WHERE order_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setDouble(1, newTotal);
+            pstmt.setInt(2, orderId);
+            pstmt.executeUpdate();
+            System.out.println("Total amount of order " + orderId + " updated to " + newTotal);
+        }
+    }
+
+    public static void deleteOrder(Connection conn, int orderId) throws SQLException {
+        String sql = "DELETE FROM orders WHERE order_id = ?";
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setInt(1, orderId);
+            pstmt.executeUpdate();
+            System.out.println("Order with id " + orderId + " deleted successfully");
+        }
+    }
+}
